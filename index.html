@@ -1,0 +1,170 @@
+<!doctype html><html lang="nl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bosschilders 2.9 — schilderende mieren</title><style>body{background:#17211d;color:#f3f1e8;font:15px system-ui;margin:0;padding:16px}main{max-width:680px;margin:auto}canvas{width:100%;aspect-ratio:1;display:block;border:1px solid #5b665e}button{padding:10px 13px;border:1px solid #7c8a7b;background:#304b3b;color:white;border-radius:8px;margin:8px 5px 8px 0}input{width:100%;accent-color:#b6c69a}.line{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#c6cfbf}h2{margin:0 0 6px}</style><main><h2>Bosschilders 2.9 — schilderende mieren</h2><p>Teekay &amp; Omnia 26 · Lucht, bodem, bomen en schaduwen</p><div style="position:relative;aspect-ratio:1"><canvas id="art" width="1000" height="1000" style="position:absolute;inset:0"></canvas><canvas id="dots" width="1000" height="1000" style="position:absolute;inset:0;pointer-events:none;border:0"></canvas></div><div class="line"><span id="status">Lucht</span><span id="count">0 stappen</span></div><button id="start">Start</button><button id="new">Nieuw schilderij</button><button id="pause">Pauze</button><button id="save">Bewaar PNG</button><label style="display:block;margin:10px 0 5px">Achtergrondkleuren <select id="mode" style="background:#304b3b;color:white;border:1px solid #7c8a7b;border-radius:8px;padding:9px;width:100%;margin-top:5px"><option value="2">2 kleuren · klassieke menging</option><option value="3">3 kleuren · extra warm óf koel</option><option value="4" selected>4 kleuren · warm én koel geschakeerd</option></select></label><div class="line"><span>Boomdikte · 0 = oorspronkelijk, 5 = dicht bos</span><b id="thicklabel">2 / 5</b></div><input id="thick" type="range" min="0" max="5" step="1" value="2"><div class="line"><span>Kleurcontrast · 2 = oorspronkelijke kleuren</span><b id="contrastlabel">2 / 5</b></div><input id="contrast" type="range" min="0" max="5" step="1" value="2"><div class="line"><span>Stappen per seconde</span><b id="speedlabel">10.000</b></div><input id="speed" type="range" min="3000" max="50000" step="1000" value="10000"><p>50% kans blauw links of rechts · golvende horizon · perspectivische bomen · grillige takken · schuine schaduwen · CMYK-mieren</p></main><script>
+(()=>{const c=document.getElementById('art'),g=c.getContext('2d',{alpha:false}),dg=document.getElementById('dots').getContext('2d'),$=id=>document.getElementById(id),R=(a,b)=>a+Math.random()*(b-a),mix=(a,b,t)=>a.map((v,i)=>v*(1-t)+b[i]*t),rgba=(a,t)=>`rgba(${a.map(Math.round).join(',')},${t})`;const cool=[[47,178,249],[29,201,224],[22,181,181],[20,156,146],[39,193,166]];const warm=[[255,236,39],[255,197,36],[255,139,33],[245,83,38],[196,34,31]];const grounds=[[204,185,119],[198,178,123],[194,183,135],[207,188,141],[194,181,118]];const sets=Array.from({length:5},(_,i)=>[cool[i],warm[i],grounds[i]]);let pal,edge,horizon,ants,phase,done,steps,phaseSteps,paused=true,speed=10000,last=0,budget=0,mode=4,extraWarm=true,extraCool=true,warmEdge,coolEdge;const targets=[200000,160000,100000];let trees=[],marks=[],treeIndex=0,thickness=2,blueLeft=true;function buildHorizon(){
+ const points=[];let broad=0,mid=0,rough=0;
+ for(let x=0;x<=1000;x+=5){
+  broad=.985*broad+R(-3,3);mid=.84*mid+R(-5,5);rough=.4*rough+R(-6,6);
+  points.push([x,Math.max(470,Math.min(825,edge+broad*1.8+mid+rough))]);
+ }
+ horizon=new Float32Array(1001);
+ for(let i=0;i<points.length-1;i++){
+  let [x,y]=points[i],[nx,ny]=points[i+1];
+  for(let xx=x;xx<=nx;xx++)horizon[xx]=y+(ny-y)*(xx-x)/(nx-x);
+ }
+}
+function boundary(x){return horizon[Math.max(0,Math.min(1000,Math.round(x)))];}
+function reset(){blueLeft=Math.random()<.5;mode=Number($('mode').value);const enrichWarm=Math.random()<.5;extraWarm=mode===4||(mode===3&&enrichWarm);extraCool=mode===4||(mode===3&&!enrichWarm);warmEdge=[225,55,31];coolEdge=[12,151,126];pal=[[38,170,240],[255,224,46],grounds[Math.floor(R(0,5))]];edge=Math.round(500+300*Math.pow(Math.random(),2.73));buildHorizon();ants=Array.from({length:4},(_,i)=>({x:R(0,1000),y:R(0,edge),vx:R(-1,1),vy:R(-1,1),i}));g.fillStyle=rgba(mix(pal[0],[249,246,230],.22),1);g.fillRect(0,0,1000,1000);
+ g.fillStyle=rgba(mix(pal[2],[224,205,148],.22),1);
+ g.beginPath();g.moveTo(0,1000);g.lineTo(0,boundary(0));
+ for(let x=1;x<=1000;x++)g.lineTo(x,boundary(x));
+ g.lineTo(1000,1000);g.closePath();g.fill();
+ phase=0;done=false;steps=0;phaseSteps=0;paused=true;budget=0;prepareTrees();$('start').textContent='Start';$('pause').textContent='Pauze'}function prepareTrees(){
+ trees=[];marks=[];treeIndex=0;thickness=Number($('thick').value);
+ // Only the tree generator changes: background painting remains untouched.
+ for(let i=0;i<43;i++){
+  const depth=Math.pow(Math.random(),1.12),x=R(-110,1110);
+  const base=boundary(x)+(1000-boundary(x))*depth+(depth>.72?R(0,320):0);
+  let thick=(2+depth*34)*R(.7,1.6)*(1+thickness*.05);
+  let height=(125+depth*1040)*R(.75,1.35);
+  if(thickness>0){height=Math.max(height,(base+R(120,680))*(depth>.52?1.12:R(.74,1.12)));}
+  if(Math.random()<.15){thick*=.42;height*=1.16;}
+  trees.push({x,base,thick,height,depth,seed:R(0,9999)});
+ }
+ trees.sort((a,b)=>a.base-b.base);
+ function branch(x,y,angle,length,width,col,level){
+  if(length<9||width<.45||level>4)return;
+  const n=Math.max(3,Math.ceil(length/11));let px=x,py=y,heading=angle;
+  for(let k=0;k<n;k++){
+   const t=k/n;
+   heading+=R(-.19,.19)+(Math.sin(k*.64+x*.011+y*.008)*.065);
+   const dist=length/n;
+   const nx=px+Math.sin(heading)*dist,ny=py-Math.cos(heading)*dist;
+   marks.push({kind:1,x:px,y:py,bx:nx,by:ny,w:Math.max(.5,width*(1-.73*t)),col});
+   px=nx;py=ny;
+   if(level<3&&k>1&&k<n-1&&Math.random()<(.17+level*.025)){
+    const side=Math.random()<.5?-1:1;
+    branch(px,py,heading+side*R(.42,1.35),length*R(.20,.46)*(1-t*.45),width*R(.24,.48),col,level+1);
+   }
+  }
+  if(level<3&&Math.random()<.8){
+   branch(px,py,heading+R(-.85,.85),length*R(.26,.55),width*.38,col,level+1);
+  }
+ }
+ for(const tr of trees){
+  const col=mix([77,76,60],[13,18,15],tr.depth*.90);
+  const n=Math.max(16,Math.ceil(tr.height/9));
+  let x=tr.x,y=tr.base,heading=R(-.12,.12);
+  for(let j=0;j<n;j++){
+   const t=j/n,step=tr.height/n;
+   heading+=R(-.045,.045)+Math.sin(t*10+tr.seed)*.011;
+   heading=Math.max(-.50,Math.min(.50,heading));
+   const nx=x+Math.sin(heading)*step,ny=y-step;
+   const w=tr.thick*Math.pow(1-t,thickness>0?(tr.depth>.55?.50:.60):.72)*R(.91,1.08)+.5;
+   marks.push({kind:1,x,y,bx:nx,by:ny,w,col});
+   x=nx;y=ny;
+   if(t>.16&&t<.94&&Math.random()<(.11+tr.depth*.025)){
+    const side=Math.random()<.5?-1:1;
+    const angle=heading+side*R(.55,1.42);
+    branch(x,y,angle,tr.height*R(.10,.33)*(1-.36*t),w*R(.28,.58),col,0);
+   }
+   if(t>.38&&t<.85&&Math.random()<.045){
+    branch(x,y,heading+R(-.5,.5),tr.height*R(.18,.36),w*.58,col,0);
+   }
+  }
+  // Keep the existing direction of the ground shadows.
+  const shadowLen=Math.min((1000-tr.x)/1,(1000-tr.base)/.36)+120;
+  // Eén aaneengesloten, harde zwarte slagschaduw per stam.
+  // De breedte aan de voet is exact de stamdiameter; geen zachte stippen.
+  marks.push({kind:3,x:tr.x,y:tr.base,bx:tr.x+shadowLen,by:tr.base+shadowLen*.36,w:tr.thick,col:[0,0,0]});
+ }
+}
+function paintTree(a){
+ if(treeIndex>=marks.length)return;
+ const m=marks[treeIndex++];
+ // De mier staat precies op de penseelstreek die ze schildert.
+ a.x=m.bx;a.y=m.by;
+ // De verf neemt plaatselijk een kleine hoeveelheid onderliggende kleur op.
+ let under=[110,110,100];
+ if(m.x>=0&&m.x<1000&&m.y>=0&&m.y<1000){
+  const pixel=g.getImageData(Math.floor(m.x),Math.floor(m.y),1,1).data;
+  under=[pixel[0],pixel[1],pixel[2]];
+ }
+ const pigment=m.kind===3?[0,0,0]:m.col;
+ const painted=mix(pigment,under,m.kind===3?R(.02,.09):R(.055,.19));
+ if(m.kind===1){
+  const dx=m.bx-m.x,dy=m.by-m.y,len=Math.hypot(dx,dy);if(!len)return;
+  const ux=dx/len,uy=dy/len,nx=-uy,ny=ux;
+  // Ruwe, dekkende kwast: stevige kern, maar geen gladde vectorcontour.
+  g.lineCap='butt';g.lineJoin='round';
+  const sections=Math.max(2,Math.ceil(len/2.7));
+  for(let k=0;k<sections;k++){
+   const t=k/sections,nt=(k+1)/sections;
+   const wobble=Math.sin((m.x+m.y)*.09+t*21)*.045+R(-.065,.065);
+   const w=Math.max(.65,m.w*(.90+wobble));
+   const sx=m.x+dx*t,sy=m.y+dy*t,ex=m.x+dx*nt,ey=m.y+dy*nt;
+   g.strokeStyle=rgba(painted,R(.91,1));g.lineWidth=w;
+   g.beginPath();g.moveTo(sx,sy);g.lineTo(ex,ey);g.stroke();
+   if(m.w>2){
+    // Zichtbare onregelmatige borstelharen aan de zijkanten.
+    const side=Math.random()<.5?-1:1;
+    const off=side*m.w*R(.36,.53);
+    g.strokeStyle=rgba(mix(painted,[92,86,66],R(.02,.17)),R(.58,.95));
+    g.lineWidth=Math.max(.65,m.w*R(.045,.13));
+    g.beginPath();g.moveTo(sx+nx*off,sy+ny*off);
+    g.lineTo(ex+nx*(off+side*R(0,m.w*.085)),ey+ny*(off+side*R(0,m.w*.085)));g.stroke();
+   }
+  }
+  // Donkere en lichtere haren in de richting van de penseelstreek.
+  for(let k=0,n=Math.max(2,Math.ceil(len*Math.min(m.w,30)*.16));k<n;k++){
+   const t=R(0,1),offset=R(-.39,.39)*m.w;
+   const x=m.x+dx*t+nx*offset,y=m.y+dy*t+ny*offset;
+   const tint=Math.random()<.55?[106,92,70]:[11,19,14];
+   g.strokeStyle=rgba(mix(painted,tint,R(.09,.34)),R(.28,.63));
+   g.lineWidth=Math.max(.7,Math.min(6,m.w*R(.075,.19)));
+   const seg=R(2,Math.min(12,Math.max(3,len*.7)));
+   g.beginPath();g.moveTo(x,y);g.lineTo(x+ux*seg,y+uy*seg);g.stroke();
+  }
+ }else if(m.kind===3){
+  // Dezelfde zwarte, dekkende schaduw, maar kronkelend over ruwe bosgrond.
+  g.save();g.beginPath();g.moveTo(0,1000);g.lineTo(0,boundary(0));
+  for(let xx=1;xx<=1000;xx+=4)g.lineTo(xx,boundary(xx));
+  g.lineTo(1000,1000);g.closePath();g.clip();
+  const dx=m.bx-m.x,dy=m.by-m.y,len=Math.hypot(dx,dy);
+  if(len>0){
+   const ux=dx/len,uy=dy/len,nx=-uy,ny=ux;
+   const n=Math.max(20,Math.ceil(len/13));
+   let px=m.x,py=m.y;
+   const seed=m.x*.037+m.y*.019;
+   for(let k=1;k<=n;k++){
+    const t=k/n;
+    const ripple=Math.sin(t*21+seed)*m.w*.19+Math.sin(t*49+seed*1.7)*m.w*.085;
+    const x=m.x+dx*t+nx*ripple,y=m.y+dy*t+ny*ripple;
+    const width=Math.max(1,m.w*(1-.25*t)*(1+.11*Math.sin(t*37+seed)+R(-.075,.075)));
+    g.strokeStyle=rgba(painted,1);g.lineCap='round';g.lineWidth=width;
+    g.beginPath();g.moveTo(px,py);g.lineTo(x,y);g.stroke();
+    // Borstelharen maken de zwarte rand grillig, niet transparant.
+    if(m.w>3){
+     const side=Math.random()<.5?-1:1,off=side*width*.48;
+     g.lineWidth=Math.max(1,width*R(.045,.13));
+     g.beginPath();g.moveTo(x+nx*off,y+ny*off);
+     g.lineTo(x+nx*(off+side*width*R(.04,.15))+ux*R(2,9),y+ny*(off+side*width*R(.04,.15))+uy*R(2,9));g.stroke();
+    }
+    px=x;py=y;
+   }
+  }
+  g.restore();
+ }
+}
+function applyContrast(col){const level=Number($('contrast').value);if(level===2)return col;const factor=[.55,.78,1,1.18,1.38,1.6][level];return col.map(v=>Math.max(0,Math.min(255,127.5+(v-127.5)*factor)));}
+function relocate(a){a.x=R(0,1000);a.y=phase===0?R(0,boundary(a.x)):R(boundary(a.x),1000);a.vx=R(-1,1);a.vy=R(-1,1)}function paint(a){if(phase===2){paintTree(a);return}if(Math.random()<.018||a.x<0||a.x>999||a.y<0||a.y>999)relocate(a);a.vx=Math.max(-2,Math.min(2,a.vx+R(-.55,.55)));a.vy=Math.max(-2,Math.min(2,a.vy+R(-.55,.55)));let d=Math.hypot(a.vx,a.vy)||1;a.x+=a.vx/d*R(2,15);a.y+=a.vy/d*R(2,15);if((phase===0&&a.y>boundary(a.x))||(phase===1&&a.y<boundary(a.x))){relocate(a);return}let col;if(phase===0){const orientedX=blueLeft?1000-a.x:a.x;let glow=Math.pow(Math.max(0,1-orientedX/1100),1.65)*(.72+.28*Math.cos(a.y*.009));const blend=Math.max(0,Math.min(1,glow*1.58+R(-.19,.19)));
+ // Preserve the original two-color mixing, but enrich each side independently.
+ let cold=pal[0],hot=pal[1];
+ if(extraCool){const side=Math.pow(Math.max(0,orientedX/1000),1.3);const ripple=.12*Math.sin(a.y*.012+a.x*.004)+.08*Math.sin(a.x*.023-a.y*.014);cold=mix(cold,coolEdge,Math.max(0,Math.min(.85,side*.94+ripple*.9)));}
+ if(extraWarm){const side=Math.pow(Math.max(0,1-orientedX/1000),1.2);const ripple=.13*Math.sin(a.y*.009-a.x*.006)+.08*Math.cos(a.x*.017+a.y*.011);hot=mix(hot,warmEdge,Math.max(0,Math.min(.9,side*.96+ripple*.9)));}
+ col=mix(cold,hot,blend);if(a.i===0)col=mix(col,pal[0],R(.06,.25));if(a.i===2)col=mix(col,pal[1],R(.05,.3));if(a.i===3)col=mix(col,[250,248,224],R(.04,.16))}else{col=mix(pal[2],[135,129,96],R(0,.38));if(a.i===0)col=mix(col,[157,168,137],R(.08,.4));if(a.i===1)col=mix(col,[199,157,110],R(.05,.28));if(a.i===2)col=mix(col,[244,215,149],R(.1,.42));if(a.i===3)col=mix(col,[96,100,78],R(.05,.25))}g.fillStyle=rgba(applyContrast(col),R(.42,.76));let size=R(3,11);let w=size*R(.7,1.7),h=size*R(.4,1.1);
+ // Split the brushmark into thin columns so the jagged horizon remains crisp.
+ for(let xx=Math.max(0,Math.floor(a.x));xx<Math.min(1000,a.x+w);xx+=2){
+  const b=boundary(xx),top=phase===0?Math.max(0,a.y):Math.max(b,a.y);
+  const bottom=phase===0?Math.min(b,a.y+h):Math.min(1000,a.y+h);
+  if(bottom>top)g.fillRect(xx,top,Math.min(2,a.x+w-xx),bottom-top);
+ }}function frame(t){let dt=Math.min(70,t-last||16);last=t;if(!paused&&!done){budget+=speed*dt/1000;let n=Math.min(Math.floor(budget),1300);budget-=n;for(let j=0;j<n;j++){paint(ants[j%4]);steps++;phaseSteps++;if(phaseSteps>=targets[phase]||(phase===2&&treeIndex>=marks.length)){phase++;phaseSteps=0;if(phase>=3){done=true;break}ants.forEach(relocate)}}}dg.clearRect(0,0,1000,1000);if(!done)ants.forEach(a=>{dg.fillStyle=['#00d6f2','#f046a4','#ffe000','#121313'][a.i];dg.fillRect(a.x-3,a.y-3,7,7)});$('status').textContent=done?'Schilderij voltooid':paused&&$('start').textContent==='Start'?'Wacht op Start':phase===0?'Lucht · '+Math.round(edge/10)+'%':phase===1?'Vuilgele bodem · '+Math.round((1000-edge)/10)+'%':'Mieren schilderen bomen en schaduwen';$('count').textContent=steps.toLocaleString('nl-BE')+' stappen';requestAnimationFrame(frame)}$('contrast').oninput=e=>{$('contrastlabel').textContent=e.target.value+' / 5';reset()};$('thick').oninput=e=>{thickness=+e.target.value;$('thicklabel').textContent=thickness+' / 5';reset()};$('mode').onchange=reset;$('new').onclick=reset;$('start').onclick=()=>{if(done)return;paused=false;$('start').textContent='Gestart';$('pause').textContent='Pauze'};$('pause').onclick=()=>{if($('start').textContent==='Start'||done)return;paused=!paused;$('pause').textContent=paused?'Verder':'Pauze'};$('speed').oninput=e=>{speed=+e.target.value;$('speedlabel').textContent=speed.toLocaleString('nl-BE')};$('save').onclick=()=>{let a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='bosschilders-2-9.png';a.click()};reset();requestAnimationFrame(frame)})();
+</script></html>
