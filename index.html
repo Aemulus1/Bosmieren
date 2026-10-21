@@ -19,28 +19,38 @@ function reset(){if(paintingNumber++>0)blueLeft=!blueLeft;lightHigh=Math.random(
  g.lineTo(1000,1000);g.closePath();g.fill();
  phase=0;done=false;steps=0;phaseSteps=0;treeTravel=0;paused=true;budget=0;maskData=null;mg.clearRect(0,0,1000,1000);prepareTrees();ants.forEach(a=>{a.target=null;a.travel=0});$('start').textContent='Start';$('pause').textContent='Pauze'}function prepareTrees(){
  trees=[];marks=[];treeIndex=0;thickness=Number($('thick').value);
- // Only the tree generator changes: background painting remains untouched.
- // Spreid de bomen bewust over de hele breedte, zodat geen zijde toevallig dichtslibt.
- // Elke boom krijgt zijn eigen horizontale strook met een beetje natuurlijke jitter.
- const treeCount=82;
+ // BASIS 3.25: de oorspronkelijke 58 bomen blijven exact volgens dezelfde verdeling.
+ const treeCount=58;
  const xPositions=[];
  for(let i=0;i<treeCount;i++){
   const slot=(i+R(.08,.92))/treeCount;
   xPositions.push(-90+slot*1180);
  }
- // Kleine shuffle voorkomt een zichtbaar mechanische links-naar-rechts opbouw,
- // zonder de gelijkmatige horizontale verdeling kwijt te raken.
  for(let i=xPositions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[xPositions[i],xPositions[j]]=[xPositions[j],xPositions[i]];}
  for(let i=0;i<treeCount;i++){
-  const rearTree=i<42;
-  const depth=rearTree?Math.pow(Math.random(),2.8)*.38:Math.pow(Math.random(),1.12),x=xPositions[i];
+  const rearTree=i<20;
+  const depth=rearTree?Math.pow(Math.random(),2.25)*.48:Math.pow(Math.random(),1.12),x=xPositions[i];
   const base=boundary(x)+(1000-boundary(x))*depth+(depth>.72?R(0,320):0);
   const thickScale=[.42,.50,.62,.78,1.12,1.78][thickness];
-  let thick=(2+depth*34)*R(rearTree?.68:.76,rearTree?1.18:1.48)*thickScale;
+  let thick=(2+depth*34)*R(.76,1.48)*thickScale;
   let height=(125+depth*1040)*R(.75,1.35);
   if(thickness>0){height=Math.max(height,(base+R(120,680))*(depth>.52?1.12:R(.74,1.12)));}
   if(Math.random()<.15){thick*=.42;height*=1.16;}
   trees.push({x,base,thick,height,depth,seed:R(0,9999),rear:rearTree});
+ }
+ // EXTRA horizonlaag: alleen kleine achterste bomen toevoegen, zonder de 58 basisbomen te vervangen.
+ const extraRear=34;
+ for(let i=0;i<extraRear;i++){
+  const slot=(i+R(.12,.88))/extraRear;
+  const x=-70+slot*1140+R(-5,5);
+  const depth=Math.pow(Math.random(),2.8)*.27;
+  const base=boundary(x)+(1000-boundary(x))*depth;
+  const thickScale=[.42,.50,.62,.78,1.12,1.78][thickness];
+  let thick=(1.5+depth*16)*R(.62,1.02)*thickScale;
+  let height=(150+depth*650)*R(.82,1.18);
+  height=Math.max(height,base*R(.58,.90));
+  if(Math.random()<.18){thick*=.55;height*=1.10;}
+  trees.push({x,base,thick,height,depth,seed:R(0,9999),rear:true});
  }
  trees.sort((a,b)=>a.base-b.base);
  function branch(x,y,angle,length,width,col,level){
@@ -293,5 +303,5 @@ function relocate(a){a.x=R(0,1000);a.y=phase===0?R(0,boundary(a.x)):R(boundary(a
     }
    }
   }
- }}function frame(t){let dt=Math.min(70,t-last||16);last=t;if(!paused&&!done){budget+=speed*dt/1000;let n=Math.min(Math.floor(budget),1300);budget-=n;for(let j=0;j<n;j++){paint(ants[j%4]);steps++;phaseSteps++;if((phase<2&&phaseSteps>=targets[phase])||(phase===2&&phaseSteps>=320000)){phase++;phaseSteps=0;if(phase>=3){done=true;break}ants.forEach(relocate)}}}dg.clearRect(0,0,1000,1000);if(!done)ants.forEach(a=>{dg.fillStyle=['#00d6f2','#f046a4','#ffe000','#121313'][a.i];dg.fillRect(a.x-3,a.y-3,7,7)});$('status').textContent=done?'Schilderij voltooid':paused&&$('start').textContent==='Start'?'Wacht op Start':phase===0?'Lucht · '+Math.round(edge/10)+'%':phase===1?'Kleurige bosbodem · '+Math.round((1000-edge)/10)+'%':'Vrije mieren schilderen bomen + grillige schaduwen';$('count').textContent=steps.toLocaleString('nl-BE')+' stappen';requestAnimationFrame(frame)}$('contrast').oninput=e=>{$('contrastlabel').textContent=e.target.value+' / 5';reset()};$('groundsaturation').oninput=e=>{$('groundsaturationlabel').textContent=e.target.value+'%';reset()};$('groundbrightness').oninput=e=>{$('groundbrightnesslabel').textContent=e.target.value+'%';reset()};$('black').oninput=e=>{$('blacklabel').textContent=e.target.value+' / 5';reset()};$('thick').oninput=e=>{thickness=+e.target.value;$('thicklabel').textContent=thickness+' / 5';reset()};$('mode').onchange=reset;$('new').onclick=reset;$('start').onclick=()=>{if(done)return;paused=false;$('start').textContent='Gestart';$('pause').textContent='Pauze'};$('pause').onclick=()=>{if($('start').textContent==='Start'||done)return;paused=!paused;$('pause').textContent=paused?'Verder':'Pauze'};$('speed').oninput=e=>{speed=+e.target.value;$('speedlabel').textContent=speed.toLocaleString('nl-BE')};$('save').onclick=()=>{let a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='bosschilders-3-26.png';a.click()};reset();requestAnimationFrame(frame)})();
+ }}function frame(t){let dt=Math.min(70,t-last||16);last=t;if(!paused&&!done){budget+=speed*dt/1000;let n=Math.min(Math.floor(budget),1300);budget-=n;for(let j=0;j<n;j++){paint(ants[j%4]);steps++;phaseSteps++;if((phase<2&&phaseSteps>=targets[phase])||(phase===2&&phaseSteps>=320000)){phase++;phaseSteps=0;if(phase>=3){done=true;break}ants.forEach(relocate)}}}dg.clearRect(0,0,1000,1000);if(!done)ants.forEach(a=>{dg.fillStyle=['#00d6f2','#f046a4','#ffe000','#121313'][a.i];dg.fillRect(a.x-3,a.y-3,7,7)});$('status').textContent=done?'Schilderij voltooid':paused&&$('start').textContent==='Start'?'Wacht op Start':phase===0?'Lucht · '+Math.round(edge/10)+'%':phase===1?'Kleurige bosbodem · '+Math.round((1000-edge)/10)+'%':'Vrije mieren schilderen bomen + grillige schaduwen';$('count').textContent=steps.toLocaleString('nl-BE')+' stappen';requestAnimationFrame(frame)}$('contrast').oninput=e=>{$('contrastlabel').textContent=e.target.value+' / 5';reset()};$('groundsaturation').oninput=e=>{$('groundsaturationlabel').textContent=e.target.value+'%';reset()};$('groundbrightness').oninput=e=>{$('groundbrightnesslabel').textContent=e.target.value+'%';reset()};$('black').oninput=e=>{$('blacklabel').textContent=e.target.value+' / 5';reset()};$('thick').oninput=e=>{thickness=+e.target.value;$('thicklabel').textContent=thickness+' / 5';reset()};$('mode').onchange=reset;$('new').onclick=reset;$('start').onclick=()=>{if(done)return;paused=false;$('start').textContent='Gestart';$('pause').textContent='Pauze'};$('pause').onclick=()=>{if($('start').textContent==='Start'||done)return;paused=!paused;$('pause').textContent=paused?'Verder':'Pauze'};$('speed').oninput=e=>{speed=+e.target.value;$('speedlabel').textContent=speed.toLocaleString('nl-BE')};$('save').onclick=()=>{let a=document.createElement('a');a.href=c.toDataURL('image/png');a.download='bosschilders-3-27.png';a.click()};reset();requestAnimationFrame(frame)})();
 </script></html>
