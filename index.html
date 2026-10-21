@@ -52,6 +52,24 @@ function reset(){if(paintingNumber++>0)blueLeft=!blueLeft;lightHigh=Math.random(
   if(Math.random()<.18){thick*=.55;height*=1.10;}
   trees.push({x,base,thick,height,depth,seed:R(0,9999),rear:true});
  }
+ // NIEUW 3.30: extra voorrij dikke stammen dicht bij de kijker, met voet buiten beeld.
+ // Doel: geen lege onderhoeken meer; 2 t/m 5 zware stammen vooraan zonder de bestaande bosopbouw te wijzigen.
+ const nearCount=2+Math.floor(R(0,4));
+ const cornerLeft=Math.random()<.5;
+ const nearXs=[];
+ nearXs.push(cornerLeft?R(-40,95):R(905,1040));
+ for(let i=1;i<nearCount;i++){
+  nearXs.push(R(20,980));
+ }
+ for(const x of nearXs){
+  const depth=.985+Math.random()*.015;
+  const base=1038+R(0,120); // stamvoet valt onder de onderrand, dus niet zichtbaar
+  const thickScale=[.92,1.00,1.10,1.22,1.38,1.56][thickness];
+  let thick=(22+R(0,26))*thickScale;
+  let height=(560+R(0,420))*Math.max(.88,thickScale*.82);
+  if(Math.random()<.22){thick*=R(.82,.92);height*=R(1.02,1.10);}
+  trees.push({x,base,thick,height,depth,seed:R(0,9999),rear:false,front:true});
+ }
  trees.sort((a,b)=>a.base-b.base);
  function branch(x,y,angle,length,width,col,level){
   if(length<9||width<.45||level>4)return;
@@ -81,7 +99,7 @@ function reset(){if(paintingNumber++>0)blueLeft=!blueLeft;lightHigh=Math.random(
    heading+=R(-.045,.045)+Math.sin(t*10+tr.seed)*.011;
    heading=Math.max(-.50,Math.min(.50,heading));
    const nx=x+Math.sin(heading)*step,ny=y-step;
-   const taper=thickness===0?.72:Math.max(.42,(tr.depth>.55?.56:.64)-thickness*.018);const w=tr.thick*Math.pow(1-t,taper)*R(.91,1.08)+.5;
+   const taper=tr.front?.66:(thickness===0?.72:Math.max(.42,(tr.depth>.55?.56:.64)-thickness*.018));const widthJitter=tr.front?R(.96,1.04):R(.91,1.08);const w=tr.thick*Math.pow(1-t,taper)*widthJitter+.5;
    marks.push({kind:1,x,y,bx:nx,by:ny,w,col});
    x=nx;y=ny;
    if(t>.16&&t<.94&&Math.random()<(.11+tr.depth*.025)){
@@ -97,7 +115,7 @@ function reset(){if(paintingNumber++>0)blueLeft=!blueLeft;lightHigh=Math.random(
   const shadowLen=Math.min(shadowDirection>0?(1000-tr.x):tr.x,(1000-tr.base)/.36)+120;
   // Eén aaneengesloten, harde zwarte slagschaduw per stam.
   // De breedte aan de voet is exact de stamdiameter; geen zachte stippen.
-  const shadowW=Math.max(tr.rear?3.8:5.2,tr.thick*(tr.rear?1.15:1.28));
+  const shadowW=Math.max(tr.rear?3.8:(tr.front?8.2:5.2),tr.thick*(tr.rear?1.15:(tr.front?1.22:1.28)));
   marks.push({kind:3,x:tr.x,y:tr.base,bx:tr.x+shadowDirection*shadowLen,by:tr.base+shadowLen*.36,w:shadowW,col:[0,0,0],rear:tr.rear});
  }
  // Laag 3 gebruikt nu opnieuw de vrije masker-miermotor uit versie 4.
