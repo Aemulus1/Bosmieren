@@ -179,7 +179,7 @@ function relocate(a){a.x=R(0,1000);a.y=phase===0?R(0,boundary(a.x)):R(boundary(a
  // Preserve the original two-color mixing, but enrich each side independently.
  let cold=pal[0],hot=pal[1];
  if(extraCool){const side=Math.pow(Math.max(0,orientedX/1000),1.3);const ripple=.12*Math.sin(a.y*.012+a.x*.004)+.08*Math.sin(a.x*.023-a.y*.014);cold=mix(cold,coolEdge,Math.max(0,Math.min(.85,side*.94+ripple*.9)));}
- if(extraWarm){const side=Math.pow(Math.max(0,1-orientedX/1000),1.2);const ripple=.13*Math.sin(a.y*.009-a.x*.006)+.08*Math.cos(a.x*.017+a.y*.011);hot=mix(hot,warmEdge,Math.max(0,Math.min(.9,side*.96+ripple*.9)));}
+ if(extraWarm){const sideX=Math.pow(Math.max(0,1-orientedX/1000),1.2);const sideY=Math.pow(Math.max(0,1-orientedY/1000),1.08);const corner=sideX*(.28+.72*sideY);const ripple=.10*Math.sin(a.y*.009-a.x*.006)+.06*Math.cos(a.x*.017+a.y*.011);hot=mix(hot,warmEdge,Math.max(0,Math.min(.9,corner*.98+ripple*.55)));}
  col=mix(cold,hot,blend);if(a.i===0)col=mix(col,pal[0],R(.06,.25));if(a.i===2)col=mix(col,pal[1],R(.05,.3));if(a.i===3)col=mix(col,[250,248,224],R(.04,.16))}else{col=mix(pal[2],[48,40,31],R(.18,.58));if(a.i===0)col=mix(col,[92,82,58],R(.06,.22));if(a.i===1)col=mix(col,[126,84,46],R(.08,.24));if(a.i===2)col=mix(col,[156,108,46],R(.06,.20));if(a.i===3)col=mix(col,[58,45,32],R(.10,.32));if(Math.random()<.16)col=mix(col,[128,72,28],R(.08,.24));if(Math.random()<.12)col=mix(col,[164,112,34],R(.06,.20))}g.fillStyle=rgba(applyContrast(col),R(.52,.88));let size=R(3,11);let w=size*R(.7,1.7),h=size*R(.4,1.1);
  // Split the brushmark into thin columns so the jagged horizon remains crisp.
  for(let xx=Math.max(0,Math.floor(a.x));xx<Math.min(1000,a.x+w);xx+=2){
