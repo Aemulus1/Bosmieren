@@ -40,7 +40,7 @@ function reset(){if(paintingNumber++>0)blueLeft=!blueLeft;lightHigh=Math.random(
   let height=(125+depth*1040)*R(.75,1.35);
   if(thickness>0){height=Math.max(height,(base+R(120,680))*(depth>.52?1.12:R(.74,1.12)));}
   if(Math.random()<.15){thick*=.42;height*=1.16;}
-  trees.push({x,base,thick,height,depth,seed:R(0,9999)});
+  trees.push({x,base,thick,height,depth,seed:R(0,9999),rear:rearTree});
  }
  trees.sort((a,b)=>a.base-b.base);
  function branch(x,y,angle,length,width,col,level){
@@ -87,8 +87,8 @@ function reset(){if(paintingNumber++>0)blueLeft=!blueLeft;lightHigh=Math.random(
   const shadowLen=Math.min(shadowDirection>0?(1000-tr.x):tr.x,(1000-tr.base)/.36)+120;
   // Eén aaneengesloten, harde zwarte slagschaduw per stam.
   // De breedte aan de voet is exact de stamdiameter; geen zachte stippen.
-  const shadowW=Math.max(rearTree?3.8:5.2,tr.thick*(rearTree?1.15:1.28));
-  marks.push({kind:3,x:tr.x,y:tr.base,bx:tr.x+shadowDirection*shadowLen,by:tr.base+shadowLen*.36,w:shadowW,col:[0,0,0],rear:rearTree});
+  const shadowW=Math.max(tr.rear?3.8:5.2,tr.thick*(tr.rear?1.15:1.28));
+  marks.push({kind:3,x:tr.x,y:tr.base,bx:tr.x+shadowDirection*shadowLen,by:tr.base+shadowLen*.36,w:shadowW,col:[0,0,0],rear:tr.rear});
  }
  // Laag 3 gebruikt nu opnieuw de vrije masker-miermotor uit versie 4.
  remainingMarks=marks.slice();
